@@ -9,11 +9,22 @@ interface Message {
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+// 生成唯一会话ID
+function generateThreadId() {
+  return `thread_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
 export default function ChatPanel() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [threadId, setThreadId] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // 初始化 threadId
+  useEffect(() => {
+    setThreadId(generateThreadId());
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -32,7 +43,7 @@ export default function ChatPanel() {
       const res = await fetch(`${API_URL}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMessage], stream: true }),
+        body: JSON.stringify({ messages: [...messages, userMessage], stream: true, threadId }),
       });
 
       const reader = res.body?.getReader();
@@ -63,11 +74,36 @@ export default function ChatPanel() {
     }
   };
 
+  // 新建对话
+  const handleNewChat = async () => {
+    if (threadId) {
+      // 清除服务端内存
+      try {
+        await fetch(`${API_URL}/api/memory/${threadId}`, { method: "DELETE" });
+      } catch (e) {
+        console.error("Failed to clear memory:", e);
+      }
+    }
+    setMessages([]);
+    setThreadId(generateThreadId());
+  };
+
   return (
     <div className="flex h-[500px] flex-col">
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-xs text-zinc-400">
+          会话: {threadId.slice(0, 20)}...
+        </span>
+        <button
+          onClick={handleNewChat}
+          className="text-xs text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+        >
+          新对话
+        </button>
+      </div>
       <div className="flex-1 overflow-y-auto space-y-3 mb-4">
         {messages.length === 0 && (
-          <p className="text-center text-zinc-400">Start a conversation...</p>
+          <p className="text-center text-zinc-400">开始对话...</p>
         )}
         {messages.map((msg, i) => (
           <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
