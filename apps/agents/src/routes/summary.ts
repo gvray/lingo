@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { createModel } from "../lib/model.js";
+import { createModel } from "../lib/model";
 
 export const summaryRoute = new Hono();
 

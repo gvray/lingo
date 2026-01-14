@@ -14,9 +14,9 @@ import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
-import { chatRoute } from "./routes/chat.js";
-import { summaryRoute } from "./routes/summary.js";
-import { translateRoute } from "./routes/translate.js";
+import { chatRoute } from "./routes/chat";
+import { summaryRoute } from "./routes/summary";
+import { translateRoute } from "./routes/translate";
 
 const app = new Hono();
 
