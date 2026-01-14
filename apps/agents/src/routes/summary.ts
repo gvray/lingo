@@ -1,20 +1,16 @@
 import { Hono } from "hono";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { HumanMessage } from "@langchain/core/messages";
 import { createModel } from "../lib/model";
+import { buildSummaryPrompt } from "../prompts";
 
 export const summaryRoute = new Hono();
-
-const SYSTEM_PROMPT = `You are a summarization assistant. Create clear, concise summaries.`;
 
 summaryRoute.post("/", async (c) => {
   const { text, language, stream } = await c.req.json();
   const model = createModel();
 
-  let prompt = `Summarize the following text`;
-  if (language) prompt += ` in ${language}`;
-  prompt += `:\n\n${text}`;
-
-  const messages = [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(prompt)];
+  const prompt = await buildSummaryPrompt(text, language);
+  const messages = [new HumanMessage(prompt)];
 
   if (stream) {
     const streamResponse = await model.stream(messages);

@@ -1,18 +1,16 @@
 import { Hono } from "hono";
-import { HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { HumanMessage } from "@langchain/core/messages";
 import { createModel } from "../lib/model";
+import { buildTranslatePrompt } from "../prompts";
 
 export const translateRoute = new Hono();
-
-const SYSTEM_PROMPT = `You are a translator. Only output the translation, no explanations.`;
 
 translateRoute.post("/", async (c) => {
   const { text, targetLang, sourceLang, stream } = await c.req.json();
   const model = createModel();
 
-  const from = sourceLang ? `from ${sourceLang} ` : "";
-  const prompt = `Translate ${from}to ${targetLang}:\n\n${text}`;
-  const messages = [new SystemMessage(SYSTEM_PROMPT), new HumanMessage(prompt)];
+  const prompt = await buildTranslatePrompt(text, targetLang, sourceLang);
+  const messages = [new HumanMessage(prompt)];
 
   if (stream) {
     const streamResponse = await model.stream(messages);
