@@ -243,7 +243,66 @@ chatRoute.post("/", async (c) => {
 
 ---
 
-## 5. API 端点
+## 5. Structured Output 结构化输出
+
+使用 `toolStrategy` 强制模型返回符合 Zod Schema 的结构化数据。
+
+### Schemas (`schemas/index.ts`)
+
+```typescript
+import { z } from "zod";
+
+// 联系人信息
+export const ContactInfoSchema = z.object({
+  name: z.string().describe("姓名"),
+  email: z.string().optional().describe("邮箱地址"),
+  phone: z.string().optional().describe("电话号码"),
+});
+
+// 产品评论分析
+export const ProductReviewSchema = z.object({
+  rating: z.number().min(1).max(5).optional(),
+  sentiment: z.enum(["positive", "negative", "neutral"]),
+  pros: z.array(z.string()).describe("优点"),
+  cons: z.array(z.string()).describe("缺点"),
+});
+```
+
+### 使用方式 (`routes/extract.ts`)
+
+```typescript
+import { createAgent, toolStrategy } from "langchain";
+import { ContactInfoSchema } from "../schemas";
+
+extractRoute.post("/contact", async (c) => {
+  const { text } = await c.req.json();
+
+  const agent = createAgent({
+    model: createLLM(),
+    tools: [],
+    responseFormat: toolStrategy(ContactInfoSchema),  // 结构化输出
+  });
+
+  const result = await agent.invoke({
+    messages: [{ role: "user", content: `提取联系人：${text}` }],
+  });
+
+  return c.json({ data: result.structuredResponse });
+});
+```
+
+### Extract API 端点
+
+| 端点 | 功能 | 返回结构 |
+| ---- | ---- | ---- |
+| `POST /api/extract/contact` | 提取联系人 | `{ name, email, phone }` |
+| `POST /api/extract/review` | 分析评论 | `{ rating, sentiment, pros, cons }` |
+| `POST /api/extract/article` | 文章元数据 | `{ title, author, tags }` |
+| `POST /api/extract/tasks` | 提取任务 | `{ tasks: [...] }` |
+
+---
+
+## 6. API 端点
 
 | 端点 | 方法 | 功能 |
 |------|------|------|

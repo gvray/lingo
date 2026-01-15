@@ -418,6 +418,72 @@ const trimMiddleware = createMiddleware({
 
 ---
 
+## 8. Structured Output 结构化输出
+
+强制模型返回符合 Schema 的结构化 JSON。
+
+### 两种策略
+
+```typescript
+import { createAgent, toolStrategy, providerStrategy } from "langchain";
+import { z } from "zod";
+
+const schema = z.object({
+  name: z.string(),
+  age: z.number(),
+});
+
+// 方式1: Provider Strategy（模型原生支持）
+const agent1 = createAgent({
+  model: "gpt-4o",
+  responseFormat: providerStrategy(schema),
+});
+
+// 方式2: Tool Strategy（通过工具调用实现）
+const agent2 = createAgent({
+  model: "gpt-4o",
+  responseFormat: toolStrategy(schema),
+});
+```
+
+### 使用示例
+
+```typescript
+const ContactSchema = z.object({
+  name: z.string().describe("姓名"),
+  email: z.string().optional().describe("邮箱"),
+  phone: z.string().optional().describe("电话"),
+});
+
+const agent = createAgent({
+  model: createLLM(),
+  tools: [],
+  responseFormat: toolStrategy(ContactSchema),
+});
+
+const result = await agent.invoke({
+  messages: [{ role: "user", content: "提取: 张三, zhang@example.com" }],
+});
+
+console.log(result.structuredResponse);
+// { name: "张三", email: "zhang@example.com" }
+```
+
+### 错误处理
+
+```typescript
+const agent = createAgent({
+  model: createLLM(),
+  responseFormat: toolStrategy(schema, {
+    handleError: true,  // 自动重试（默认）
+    // handleError: false,  // 不重试，抛出异常
+    // handleError: (err) => `请修正: ${err.message}`,  // 自定义
+  }),
+});
+```
+
+---
+
 ## 常用包
 
 | 包名 | 用途 |

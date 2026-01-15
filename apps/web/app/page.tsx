@@ -4,8 +4,9 @@ import { useState } from "react";
 import ChatPanel from "./components/ChatPanel";
 import SummaryPanel from "./components/SummaryPanel";
 import TranslatePanel from "./components/TranslatePanel";
+import ExtractPanel from "./components/ExtractPanel";
 
-type Tab = "chat" | "summary" | "translate";
+type Tab = "chat" | "summary" | "translate" | "extract";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<Tab>("chat");
@@ -16,7 +17,7 @@ export default function Home() {
         <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-100">Lingo</h1>
         
         <div className="mb-4 flex gap-2">
-          {(["chat", "summary", "translate"] as Tab[]).map((tab) => (
+          {(["chat", "summary", "translate", "extract"] as Tab[]).map((tab) => (
             <button
               key={tab}
               onClick={() => setActiveTab(tab)}
@@ -35,6 +36,7 @@ export default function Home() {
           {activeTab === "chat" && <ChatPanel />}
           {activeTab === "summary" && <SummaryPanel />}
           {activeTab === "translate" && <TranslatePanel />}
+          {activeTab === "extract" && <ExtractPanel />}
         </div>
       </div>
     </div>
