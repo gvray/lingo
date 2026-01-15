@@ -1,15 +1,4 @@
-import { config } from "dotenv";
-import { fileURLToPath } from "url";
-import { dirname, resolve } from "path";
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-config({ path: resolve(__dirname, "../.env") });
-
-console.log("ENV loaded:", {
-  MODEL: process.env.MODEL,
-  BASE_URL: process.env.BASE_URL,
-  API_KEY: process.env.API_KEY?.slice(0, 10) + "...",
-});
+import  "dotenv/config";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
