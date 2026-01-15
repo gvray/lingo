@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { HumanMessage } from "@langchain/core/messages";
-import { createModel } from "../lib/model";
+import { createLLM } from "../lib/llm";
 import { buildTranslatePrompt } from "../prompts";
 
 export const translateRoute = new Hono();
 
 translateRoute.post("/", async (c) => {
   const { text, targetLang, sourceLang, stream } = await c.req.json();
-  const model = createModel();
+  const model = createLLM();
 
   const prompt = await buildTranslatePrompt(text, targetLang, sourceLang);
   const messages = [new HumanMessage(prompt)];

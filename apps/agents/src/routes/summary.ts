@@ -1,13 +1,13 @@
 import { Hono } from "hono";
 import { HumanMessage } from "@langchain/core/messages";
-import { createModel } from "../lib/model";
+import { createLLM } from "../lib/llm";
 import { buildSummaryPrompt } from "../prompts";
 
 export const summaryRoute = new Hono();
 
 summaryRoute.post("/", async (c) => {
   const { text, language, stream } = await c.req.json();
-  const model = createModel();
+  const model = createLLM();
 
   const prompt = await buildSummaryPrompt(text, language);
   const messages = [new HumanMessage(prompt)];

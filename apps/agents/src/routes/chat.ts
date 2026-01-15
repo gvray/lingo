@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { createAgent } from "langchain";
-import { createModel } from "../lib/model";
+import { createLLM } from "../lib/llm";
 import { allTools } from "../tools";
 import { checkpointer, memoryStats } from "../memory";
 
@@ -24,7 +24,7 @@ const SYSTEM_PROMPT = `你是一个智能助手，名叫 Lingo。
 // 创建带 checkpointer 的 agent
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const agent = createAgent({
-  model: createModel() as any,
+  model: createLLM() as any,
   tools: allTools as any,
   systemPrompt: SYSTEM_PROMPT,
   checkpointer: checkpointer as any,

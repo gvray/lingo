@@ -212,7 +212,7 @@ import { checkpointer, memoryStats } from "../memory";
 
 // 创建带 checkpointer 的 agent
 const agent = createAgent({
-  model: createModel(),
+  model: createLLM(),
   tools: allTools,
   systemPrompt: SYSTEM_PROMPT,
   checkpointer,  // 官方 MemorySaver
