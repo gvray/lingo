@@ -4,7 +4,7 @@ import { useState } from "react";
 
 type ExtractType = "contact" | "review" | "article" | "tasks";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
 
 const extractTypes: { key: ExtractType; label: string; placeholder: string }[] = [
   {

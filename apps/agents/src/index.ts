@@ -15,7 +15,7 @@ const app = new Hono();
 
 app.use("*", logger());
 app.use("*", cors({
-  origin: ["http://localhost:3000"],
+  origin: ["http://localhost:9527"],
   allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type"],
 }));
@@ -29,7 +29,7 @@ app.route("/api/extract", extractRoute);
 app.route("/api/batch", batchRoute);
 app.route("/api/analyze", analyzeRoute);
 
-const port = parseInt(process.env.PORT || "3001");
+const port = parseInt(process.env.PORT || "8081");
 serve({ fetch: app.fetch, port }, () => {
   console.log(`🚀 Agents running at http://localhost:${port}`);
 });

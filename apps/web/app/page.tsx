@@ -1,44 +1,213 @@
 "use client";
 
-import { useState } from "react";
-import ChatPanel from "./components/ChatPanel";
+import { useState, useEffect, useCallback } from "react";
+import Sidebar, { AppMode } from "./components/Sidebar";
+import ChatView from "./components/ChatView";
 import SummaryPanel from "./components/SummaryPanel";
 import TranslatePanel from "./components/TranslatePanel";
 import ExtractPanel from "./components/ExtractPanel";
 
-type Tab = "chat" | "summary" | "translate" | "extract";
+interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
+
+interface Conversation {
+  id: string;
+  title: string;
+  messages: Message[];
+  createdAt: Date;
+}
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8081";
+
+function generateThreadId() {
+  return `thread_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<Tab>("chat");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [activeMode, setActiveMode] = useState<AppMode>("chat");
+
+  // 获取当前对话
+  const activeConversation = conversations.find((c) => c.id === activeId);
+  const messages = activeConversation?.messages || [];
+
+  // 创建新对话
+  const handleNewChat = useCallback(() => {
+    const newId = generateThreadId();
+    const newConv: Conversation = {
+      id: newId,
+      title: "新对话",
+      messages: [],
+      createdAt: new Date(),
+    };
+    setConversations((prev) => [newConv, ...prev]);
+    setActiveId(newId);
+  }, []);
+
+  // 初始化
+  useEffect(() => {
+    if (conversations.length === 0) {
+      handleNewChat();
+    }
+  }, [conversations.length, handleNewChat]);
+
+  // 选择对话
+  const handleSelect = (id: string) => {
+    setActiveId(id);
+  };
+
+  // 删除对话
+  const handleDelete = async (id: string) => {
+    try {
+      await fetch(`${API_URL}/api/memory/${id}`, { method: "DELETE" });
+    } catch (e) {
+      console.error("Failed to clear memory:", e);
+    }
+    setConversations((prev) => prev.filter((c) => c.id !== id));
+    if (activeId === id) {
+      const remaining = conversations.filter((c) => c.id !== id);
+      if (remaining.length > 0) {
+        setActiveId(remaining[0].id);
+      } else {
+        handleNewChat();
+      }
+    }
+  };
+
+  // 发送消息
+  const handleSendMessage = async (content: string) => {
+    if (!activeId || loading) return;
+
+    const userMessage: Message = { role: "user", content };
+
+    // 更新消息
+    setConversations((prev) =>
+      prev.map((c) =>
+        c.id === activeId
+          ? {
+              ...c,
+              messages: [...c.messages, userMessage],
+              title: c.messages.length === 0 ? content.slice(0, 30) : c.title,
+            }
+          : c
+      )
+    );
+
+    setLoading(true);
+
+    try {
+      const currentMessages = [...messages, userMessage];
+      const res = await fetch(`${API_URL}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: currentMessages,
+          stream: true,
+          threadId: activeId,
+        }),
+      });
+
+      const reader = res.body?.getReader();
+      if (!reader) throw new Error("No reader");
+
+      // 添加空的 assistant 消息
+      const assistantMessage: Message = { role: "assistant", content: "" };
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeId ? { ...c, messages: [...c.messages, assistantMessage] } : c
+        )
+      );
+
+      const decoder = new TextDecoder();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value);
+        setConversations((prev) =>
+          prev.map((c) => {
+            if (c.id !== activeId) return c;
+            const newMessages = [...c.messages];
+            const lastIdx = newMessages.length - 1;
+            newMessages[lastIdx] = {
+              ...newMessages[lastIdx],
+              content: newMessages[lastIdx].content + text,
+            };
+            return { ...c, messages: newMessages };
+          })
+        );
+      }
+    } catch (error) {
+      console.error(error);
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeId
+            ? { ...c, messages: [...c.messages, { role: "assistant", content: "发生错误，请重试" }] }
+            : c
+        )
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 渲染主内容
+  const renderMainContent = () => {
+    switch (activeMode) {
+      case "chat":
+        return (
+          <ChatView
+            messages={messages}
+            onSendMessage={handleSendMessage}
+            loading={loading}
+          />
+        );
+      case "summary":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">文本摘要</h2>
+            <SummaryPanel />
+          </div>
+        );
+      case "translate":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">文本翻译</h2>
+            <TranslatePanel />
+          </div>
+        );
+      case "extract":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">信息提取</h2>
+            <ExtractPanel />
+          </div>
+        );
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <div className="mx-auto max-w-4xl p-4">
-        <h1 className="mb-6 text-2xl font-bold text-zinc-900 dark:text-zinc-100">Lingo</h1>
-        
-        <div className="mb-4 flex gap-2">
-          {(["chat", "summary", "translate", "extract"] as Tab[]).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
-                activeTab === tab
-                  ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                  : "bg-zinc-200 text-zinc-700 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              }`}
-            >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
-            </button>
-          ))}
-        </div>
-
-        <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-          {activeTab === "chat" && <ChatPanel />}
-          {activeTab === "summary" && <SummaryPanel />}
-          {activeTab === "translate" && <TranslatePanel />}
-          {activeTab === "extract" && <ExtractPanel />}
-        </div>
-      </div>
+    <div className="h-screen flex bg-zinc-950">
+      <Sidebar
+        conversations={conversations.map((c) => ({
+          id: c.id,
+          title: c.title,
+          createdAt: c.createdAt,
+        }))}
+        activeId={activeId}
+        onSelect={handleSelect}
+        onNewChat={handleNewChat}
+        onDelete={handleDelete}
+        collapsed={sidebarCollapsed}
+        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+        activeMode={activeMode}
+        onModeChange={setActiveMode}
+      />
+      {renderMainContent()}
     </div>
   );
 }
