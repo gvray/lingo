@@ -120,7 +120,7 @@ export default function ChatView({ messages, onSendMessage, loading }: ChatViewP
       {/* Input Area */}
       <div className="border-t border-zinc-800 bg-zinc-950 px-4 py-4">
         <form onSubmit={handleSubmit} className="max-w-3xl mx-auto">
-          <div className="relative flex items-end bg-zinc-800 rounded-2xl border border-zinc-700 focus-within:border-zinc-600 transition-colors">
+          <div className="relative flex items-center bg-zinc-800 rounded-2xl border border-zinc-700 focus-within:border-zinc-600 transition-colors">
             <textarea
               ref={textareaRef}
               value={input}
@@ -128,7 +128,7 @@ export default function ChatView({ messages, onSendMessage, loading }: ChatViewP
               onKeyDown={handleKeyDown}
               placeholder="发送消息..."
               rows={1}
-              className="flex-1 bg-transparent text-white placeholder-zinc-500 px-4 py-3 text-[15px] resize-none outline-none max-h-[200px]"
+              className="flex-1 bg-transparent text-white placeholder-zinc-500 px-4 py-3 text-[15px] leading-[1.2] resize-none outline-none max-h-[200px]"
               disabled={loading}
             />
             <button
