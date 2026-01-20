@@ -10,6 +10,13 @@ import { memoryRoute } from "./routes/memory";
 import { extractRoute } from "./routes/extract";
 import { batchRoute } from "./routes/batch";
 import { analyzeRoute } from "./routes/analyze";
+import { examplesAgentsRoute } from "./routes/examples/agents";
+import { examplesModelsRoute } from "./routes/examples/models";
+import { examplesMessagesRoute } from "./routes/examples/messages";
+import { examplesToolsRoute } from "./routes/examples/tools";
+import { examplesMemoryRoute } from "./routes/examples/memory";
+import { examplesStreamingRoute } from "./routes/examples/streaming";
+import { examplesStructuredRoute } from "./routes/examples/structured";
 
 const app = new Hono();
 
@@ -28,6 +35,13 @@ app.route("/api/memory", memoryRoute);
 app.route("/api/extract", extractRoute);
 app.route("/api/batch", batchRoute);
 app.route("/api/analyze", analyzeRoute);
+app.route("/api/examples/agents", examplesAgentsRoute);
+app.route("/api/examples/models", examplesModelsRoute);
+app.route("/api/examples/messages", examplesMessagesRoute);
+app.route("/api/examples/tools", examplesToolsRoute);
+app.route("/api/examples/memory", examplesMemoryRoute);
+app.route("/api/examples/streaming", examplesStreamingRoute);
+app.route("/api/examples/structured", examplesStructuredRoute);
 
 const port = parseInt(process.env.PORT || "8081");
 serve({ fetch: app.fetch, port }, () => {

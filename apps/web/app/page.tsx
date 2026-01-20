@@ -6,6 +6,13 @@ import ChatView from "./components/ChatView";
 import SummaryPanel from "./components/SummaryPanel";
 import TranslatePanel from "./components/TranslatePanel";
 import ExtractPanel from "./components/ExtractPanel";
+import AgentsDemo from "./components/examples/AgentsDemo";
+import ModelsDemo from "./components/examples/ModelsDemo";
+import MessagesDemo from "./components/examples/MessagesDemo";
+import ToolsDemo from "./components/examples/ToolsDemo";
+import MemoryDemo from "./components/examples/MemoryDemo";
+import StreamingDemo from "./components/examples/StreamingDemo";
+import StructuredDemo from "./components/examples/StructuredDemo";
 
 interface Message {
   role: "user" | "assistant";
@@ -192,6 +199,55 @@ export default function Home() {
           <div className="flex-1 flex flex-col bg-zinc-950 p-6">
             <h2 className="text-xl font-semibold text-white mb-4">信息提取</h2>
             <ExtractPanel />
+          </div>
+        );
+      case "agents":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Agents 代理</h2>
+            <AgentsDemo />
+          </div>
+        );
+      case "models":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Models 模型</h2>
+            <ModelsDemo />
+          </div>
+        );
+      case "messages":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Messages 消息</h2>
+            <MessagesDemo />
+          </div>
+        );
+      case "tools":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">Tools 工具</h2>
+            <ToolsDemo />
+          </div>
+        );
+      case "memory":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">短期记忆</h2>
+            <MemoryDemo />
+          </div>
+        );
+      case "streaming":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">流式输出</h2>
+            <StreamingDemo />
+          </div>
+        );
+      case "structured":
+        return (
+          <div className="flex-1 flex flex-col bg-zinc-950 p-6">
+            <h2 className="text-xl font-semibold text-white mb-4">结构化输出</h2>
+            <StructuredDemo />
           </div>
         );
     }
