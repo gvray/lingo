@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { createAgent } from "langchain";
+import { AIMessage, createAgent } from "langchain";
 import { createLLM } from "../lib/llm";
 import { allTools } from "../tools";
 import { checkpointer, memoryStats } from "../memory";
@@ -47,7 +47,7 @@ chatRoute.post("/", async (c) => {
     // 流式输出
     const streamResponse = await agent.stream(
       { messages: [{ role: "user", content: userInput }] },
-      { configurable: { thread_id: threadId }, streamMode: "values" }
+      { configurable: { thread_id: threadId }, streamMode: "values" },
     );
 
     return new Response(
@@ -56,8 +56,13 @@ chatRoute.post("/", async (c) => {
           let lastContent = "";
           for await (const chunk of streamResponse) {
             const latestMessage = chunk.messages?.at(-1);
-            if (latestMessage?.content && typeof latestMessage.content === "string") {
-              const newContent = latestMessage.content.slice(lastContent.length);
+            if (
+              latestMessage instanceof AIMessage &&
+              typeof latestMessage.content === "string"
+            ) {
+              const newContent = latestMessage.content.slice(
+                lastContent.length,
+              );
               if (newContent) {
                 controller.enqueue(new TextEncoder().encode(newContent));
                 lastContent = latestMessage.content;
@@ -67,18 +72,19 @@ chatRoute.post("/", async (c) => {
           controller.close();
         },
       }),
-      { headers: { "Content-Type": "text/plain; charset=utf-8" } }
+      { headers: { "Content-Type": "text/plain; charset=utf-8" } },
     );
   }
 
   // 非流式
   const result = await agent.invoke(
     { messages: [{ role: "user", content: userInput }] },
-    { configurable: { thread_id: threadId } }
+    { configurable: { thread_id: threadId } },
   );
 
   const lastAIMessage = result.messages.at(-1);
-  const content = typeof lastAIMessage?.content === "string" ? lastAIMessage.content : "";
+  const content =
+    typeof lastAIMessage?.content === "string" ? lastAIMessage.content : "";
 
   return c.json({ content, threadId });
 });

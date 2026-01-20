@@ -94,8 +94,8 @@ export default function Home() {
               messages: [...c.messages, userMessage],
               title: c.messages.length === 0 ? content.slice(0, 30) : c.title,
             }
-          : c
-      )
+          : c,
+      ),
     );
 
     setLoading(true);
@@ -115,19 +115,20 @@ export default function Home() {
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No reader");
 
-      // 添加空的 assistant 消息
-      const assistantMessage: Message = { role: "assistant", content: "" };
-      setConversations((prev) =>
-        prev.map((c) =>
-          c.id === activeId ? { ...c, messages: [...c.messages, assistantMessage] } : c
-        )
-      );
-
       const decoder = new TextDecoder();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const text = decoder.decode(value);
+        // 添加空的 assistant 消息
+        const assistantMessage: Message = { role: "assistant", content: "" };
+        setConversations((prev) =>
+          prev.map((c) =>
+            c.id === activeId
+              ? { ...c, messages: [...c.messages, assistantMessage] }
+              : c,
+          ),
+        );
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id !== activeId) return c;
@@ -138,7 +139,7 @@ export default function Home() {
               content: newMessages[lastIdx].content + text,
             };
             return { ...c, messages: newMessages };
-          })
+          }),
         );
       }
     } catch (error) {
@@ -146,9 +147,15 @@ export default function Home() {
       setConversations((prev) =>
         prev.map((c) =>
           c.id === activeId
-            ? { ...c, messages: [...c.messages, { role: "assistant", content: "发生错误，请重试" }] }
-            : c
-        )
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  { role: "assistant", content: "发生错误，请重试" },
+                ],
+              }
+            : c,
+        ),
       );
     } finally {
       setLoading(false);
