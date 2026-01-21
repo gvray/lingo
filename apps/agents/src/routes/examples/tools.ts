@@ -1,23 +1,42 @@
 import { Hono } from "hono";
-import { allTools } from "../../tools";
+import { tool } from "@langchain/core/tools";
+import { z } from "zod";
+import { createAgent } from "langchain";
+import { ChatOpenAI } from "@langchain/openai";
 
 export const examplesToolsRoute = new Hono();
 
-examplesToolsRoute.post("/", async (c) => {
-  const { calculatorExpr, city, query } = await c.req.json();
-  const results: Record<string, unknown> = {};
-  if (calculatorExpr) {
-    const calc = allTools.find((t) => t.name === "calculator");
-    results.calculator = calc ? await calc.invoke({ expression: calculatorExpr }) : "calculator not found";
+// 单一案例：get_weather 工具 + createAgent 调用
+const getWeather = tool(
+  async ({ city }) => {
+    return `${city}天气：晴天`;
+  },
+  {
+    name: "get_weather",
+    description: "获取城市天气",
+    schema: z.object({
+      city: z.string().describe("城市名称"),
+    }),
   }
-  if (city) {
-    const weather = allTools.find((t) => t.name === "get_weather");
-    results.weather = weather ? await weather.invoke({ location: city }) : "get_weather not found";
-  }
-  if (query) {
-    const search = allTools.find((t) => t.name === "search_web");
-    results.search = search ? await search.invoke({ query }) : "search_web not found";
-  }
-  return c.json({ results });
-});
+);
 
+examplesToolsRoute.post("/", async (c) => {
+  const { city = "北京" } = await c.req.json();
+
+  const agent = createAgent({
+    model: new ChatOpenAI({
+      model: process.env.MODEL || "gpt-4o",
+      apiKey: process.env.API_KEY,
+      configuration: { baseURL: process.env.BASE_URL || "https://api.openai.com/v1" },
+    }) as any,
+    tools: [getWeather] as any,
+    systemPrompt: "你是天气助手，遇到天气查询必须调用 get_weather 工具，回答简洁准确。",
+  });
+
+  const result = await agent.invoke({
+    messages: [{ role: "user", content: `请告诉我${city}的天气` }],
+  });
+
+  const content = result.messages.at(-1)?.content;
+  return c.json({ output: content });
+});
