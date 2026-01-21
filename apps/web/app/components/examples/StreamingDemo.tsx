@@ -8,6 +8,7 @@ export default function StreamingDemo() {
   const [prompt, setPrompt] = useState("用三个要点概述北京的冬天。");
   const [output, setOutput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<"values" | "updates" | "messages" | "custom">("values");
 
   const run = async () => {
     setOutput("");
@@ -15,7 +16,7 @@ export default function StreamingDemo() {
     const res = await fetch(`${API_URL}/api/examples/streaming`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, mode }),
     });
     const reader = res.body?.getReader();
     if (!reader) {
@@ -40,6 +41,21 @@ export default function StreamingDemo() {
         className="w-full bg-zinc-800 text-white px-3 py-2 rounded border border-zinc-700"
         rows={3}
       />
+      <div className="flex items-center gap-3">
+        <label className="text-sm text-zinc-300">模式</label>
+        <select
+          value={mode}
+          onChange={(e) =>
+            setMode(e.target.value as "values" | "updates" | "messages" | "custom")
+          }
+          className="bg-zinc-800 text-white px-3 py-2 rounded border border-zinc-700"
+        >
+          <option value="values">values</option>
+          <option value="updates">updates</option>
+          <option value="messages">messages</option>
+          <option value="custom">custom</option>
+        </select>
+      </div>
       <button
         onClick={run}
         className="px-3 py-2 rounded bg-white text-black hover:bg-zinc-200"
