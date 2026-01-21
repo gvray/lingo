@@ -87,31 +87,20 @@ export default function ChatView({ messages, onSendMessage, loading }: ChatViewP
                       {msg.role === "user" ? "你" : "Lingo"}
                     </div>
                     <div className="text-zinc-100 leading-relaxed">
-                      <pre className="whitespace-pre-wrap font-sans text-[15px]">{msg.content}</pre>
+                      {msg.role === "assistant" && !msg.content.trim() && loading ? (
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                          <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                          <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                        </div>
+                      ) : (
+                        <pre className="whitespace-pre-wrap font-sans text-[15px]">{msg.content}</pre>
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
-            {loading && (
-              <div className="mb-6">
-                <div className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center bg-gradient-to-br from-blue-500 to-purple-600">
-                    <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-medium text-sm text-zinc-400 mb-1">Lingo</div>
-                    <div className="flex items-center gap-1">
-                      <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
-                      <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
-                      <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </div>
         )}

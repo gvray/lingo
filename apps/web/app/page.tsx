@@ -122,20 +122,19 @@ export default function Home() {
       const reader = res.body?.getReader();
       if (!reader) throw new Error("No reader");
 
+      const assistantMessage: Message = { role: "assistant", content: "" };
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.id === activeId
+            ? { ...c, messages: [...c.messages, assistantMessage] }
+            : c,
+        ),
+      );
       const decoder = new TextDecoder();
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const text = decoder.decode(value);
-        // 添加空的 assistant 消息
-        const assistantMessage: Message = { role: "assistant", content: "" };
-        setConversations((prev) =>
-          prev.map((c) =>
-            c.id === activeId
-              ? { ...c, messages: [...c.messages, assistantMessage] }
-              : c,
-          ),
-        );
         setConversations((prev) =>
           prev.map((c) => {
             if (c.id !== activeId) return c;

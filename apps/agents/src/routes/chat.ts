@@ -1,5 +1,7 @@
 import { Hono } from "hono";
-import { AIMessage, createAgent } from "langchain";
+import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
+import { StateGraph, START, END, StateGraphArgs } from "@langchain/langgraph";
+import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { createLLM } from "../lib/llm";
 import { allTools } from "../tools";
 import { checkpointer, memoryStats } from "../memory";
@@ -21,14 +23,33 @@ const SYSTEM_PROMPT = `你是一个智能助手，名叫 Lingo。
 3. 回答简洁、准确
 4. 使用中文回答`;
 
-// 创建带 checkpointer 的 agent
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const agent = createAgent({
-  model: createLLM() as any,
-  tools: allTools as any,
-  systemPrompt: SYSTEM_PROMPT,
-  checkpointer: checkpointer as any,
-});
+const model = createLLM();
+const tools = allTools as any;
+const modelWithTools = (model as any).bindTools ? (model as any).bindTools(tools) : model;
+
+type AgentState = { messages: Array<HumanMessage | AIMessage | SystemMessage> };
+const graphState: StateGraphArgs<AgentState>["channels"] = {
+  messages: {
+    value: (x: AgentState["messages"], y: AgentState["messages"]) => x.concat(y),
+    default: () => [],
+  },
+};
+const callModel = async (state: AgentState) => {
+  const res = await modelWithTools.invoke(state.messages);
+  return { messages: [res as AIMessage] };
+};
+function shouldContinue(state: AgentState) {
+  const last = state.messages[state.messages.length - 1] as AIMessage;
+  return last?.tool_calls && last.tool_calls.length > 0 ? "tools" : END;
+}
+const graph = new StateGraph<AgentState>({ channels: graphState })
+  .addNode("call_model", callModel)
+  .addNode("tools", new ToolNode(tools))
+  .addEdge(START, "call_model")
+  .addConditionalEdges("call_model", shouldContinue)
+  .addEdge("tools", "call_model")
+  .compile({ checkpointer });
+
 
 chatRoute.post("/", async (c) => {
   const { messages, stream, threadId } = await c.req.json();
@@ -40,34 +61,24 @@ chatRoute.post("/", async (c) => {
   // 追踪 threadId
   memoryStats.track(threadId);
 
-  const lastMessage = messages[messages.length - 1];
-  const userInput = lastMessage?.content || "";
-
   if (stream) {
-    // 流式输出
-    const streamResponse = await agent.stream(
-      { messages: [{ role: "user", content: userInput }] },
-      { configurable: { thread_id: threadId }, streamMode: "values" },
+    const stateMessages = [
+      new SystemMessage(SYSTEM_PROMPT),
+      ...messages.map((m: { role: string; content: string }) =>
+        m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)
+      ),
+    ];
+    const streamResponse = await graph.stream(
+      { messages: stateMessages as AgentState["messages"] },
+      { configurable: { thread_id: threadId }, streamMode: "messages" }
     );
 
     return new Response(
       new ReadableStream({
         async start(controller) {
-          let lastContent = "";
-          for await (const chunk of streamResponse) {
-            const latestMessage = chunk.messages?.at(-1);
-            if (
-              latestMessage instanceof AIMessage &&
-              typeof latestMessage.content === "string"
-            ) {
-              const newContent = latestMessage.content.slice(
-                lastContent.length,
-              );
-              if (newContent) {
-                controller.enqueue(new TextEncoder().encode(newContent));
-                lastContent = latestMessage.content;
-              }
-            }
+          for await (const [token] of streamResponse as any) {
+            const text = token?.text ?? (typeof token === "string" ? token : "");
+            if (text) controller.enqueue(new TextEncoder().encode(text));
           }
           controller.close();
         },
@@ -76,15 +87,18 @@ chatRoute.post("/", async (c) => {
     );
   }
 
-  // 非流式
-  const result = await agent.invoke(
-    { messages: [{ role: "user", content: userInput }] },
-    { configurable: { thread_id: threadId } },
-  );
-
-  const lastAIMessage = result.messages.at(-1);
-  const content =
-    typeof lastAIMessage?.content === "string" ? lastAIMessage.content : "";
+  const stateMessages = [
+    new SystemMessage(SYSTEM_PROMPT),
+    ...messages.map((m: { role: string; content: string }) =>
+      m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)
+    ),
+  ];
+  const resultState = (await graph.invoke(
+    { messages: stateMessages as AgentState["messages"] },
+    { configurable: { thread_id: threadId } }
+  )) as AgentState;
+  const last = resultState.messages[resultState.messages.length - 1] as AIMessage;
+  const content = typeof last?.content === "string" ? last.content : "";
 
   return c.json({ content, threadId });
 });

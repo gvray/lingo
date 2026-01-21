@@ -17,6 +17,7 @@ import { examplesToolsRoute } from "./routes/examples/tools";
 import { examplesMemoryRoute } from "./routes/examples/memory";
 import { examplesStreamingRoute } from "./routes/examples/streaming";
 import { examplesStructuredRoute } from "./routes/examples/structured";
+import { rateLimit } from "./middleware/rate-limit";
 
 const app = new Hono();
 
@@ -26,6 +27,7 @@ app.use("*", cors({
   allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type"],
 }));
+app.use("*", rateLimit({ windowMs: 10000, max: 100 }));
 
 app.get("/health", (c) => c.json({ status: "ok" }));
 app.route("/api/chat", chatRoute);

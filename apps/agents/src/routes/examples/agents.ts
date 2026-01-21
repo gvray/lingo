@@ -1,5 +1,4 @@
 import { Hono } from "hono";
-import { createAgent } from "langchain";
 import { allTools } from "../../tools";
 import { createLLM } from "../../lib/llm";
 import { checkpointer, memoryStats } from "../../memory";
@@ -8,26 +7,18 @@ export const examplesAgentsRoute = new Hono();
 
 examplesAgentsRoute.post("/", async (c) => {
   const { input, threadId, stream = false } = await c.req.json();
-  const agent = createAgent({
-    model: createLLM() as any,
-    tools: allTools as any,
-    systemPrompt: "你是演示用的 Agent，回答简洁，必要时调用工具。",
-    checkpointer: checkpointer as any,
-  });
+  const model = createLLM() as any;
+  const modelWithTools = model.bindTools ? model.bindTools(allTools as any) : model;
 
   memoryStats.track(threadId || "examples");
 
   if (stream) {
-    const streamResponse = await agent.stream(
-      { messages: [{ role: "user", content: input }] },
-      { configurable: { thread_id: threadId }, streamMode: "values" }
-    );
+    const streamResponse = await model.stream([{ role: "user", content: input }]);
     return new Response(
       new ReadableStream({
         async start(controller) {
           for await (const chunk of streamResponse) {
-            const last = chunk.messages?.at(-1);
-            const text = typeof last?.content === "string" ? last.content : "";
+            const text = typeof chunk.content === "string" ? chunk.content : "";
             if (text) controller.enqueue(new TextEncoder().encode(text));
           }
           controller.close();
@@ -37,12 +28,7 @@ examplesAgentsRoute.post("/", async (c) => {
     );
   }
 
-  const result = await agent.invoke(
-    { messages: [{ role: "user", content: input }] },
-    { configurable: { thread_id: threadId } }
-  );
-  const last = result.messages.at(-1);
-  const content = typeof last?.content === "string" ? last.content : "";
+  const result = await modelWithTools.invoke([{ role: "user", content: input }]);
+  const content = typeof result.content === "string" ? result.content : "";
   return c.json({ content });
 });
-
