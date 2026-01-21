@@ -114,7 +114,15 @@ export default function ChatPanel() {
                   : "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-zinc-100"
               }`}
             >
-              <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+              {msg.role === "assistant" && !msg.content.trim() && loading ? (
+                <div className="flex items-center gap-1">
+                  <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "0ms" }}></span>
+                  <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "150ms" }}></span>
+                  <span className="w-2 h-2 bg-zinc-500 rounded-full animate-bounce" style={{ animationDelay: "300ms" }}></span>
+                </div>
+              ) : (
+                <pre className="whitespace-pre-wrap font-sans">{msg.content}</pre>
+              )}
             </div>
           </div>
         ))}

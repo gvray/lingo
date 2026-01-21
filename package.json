@@ -6,6 +6,16 @@
     "build": "pnpm -r build",
     "lint": "pnpm -r lint"
   },
+  "keywords": [
+    "LangGraph",
+    "langChain",
+    "LLM",
+    "AI Agent",
+    "OpenAI",
+    "Next.js",
+    "TypeScript",
+    "Chatbot"
+  ],
   "devDependencies": {
     "typescript": "^5"
   }
