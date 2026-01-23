@@ -1,7 +1,9 @@
 import { Hono } from "hono";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { StateGraph, START, END, StateGraphArgs } from "@langchain/langgraph";
+import type { BaseMessage } from "@langchain/core/messages";
+import { StateGraph, START, END, Annotation, messagesStateReducer } from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
+import type { DynamicStructuredTool } from "@langchain/core/tools";
 import { createLLM } from "../lib/llm";
 import { allTools } from "../tools";
 import { checkpointer, memoryStats } from "../memory";
@@ -24,25 +26,25 @@ const SYSTEM_PROMPT = `你是一个智能助手，名叫 Lingo。
 4. 使用中文回答`;
 
 const model = createLLM();
-const tools = allTools as any;
-const modelWithTools = (model as any).bindTools ? (model as any).bindTools(tools) : model;
+const tools: DynamicStructuredTool[] = allTools;
+const modelWithTools = model.bindTools(tools);
 
-type AgentState = { messages: Array<HumanMessage | AIMessage | SystemMessage> };
-const graphState: StateGraphArgs<AgentState>["channels"] = {
-  messages: {
-    value: (x: AgentState["messages"], y: AgentState["messages"]) => x.concat(y),
+const StateAnnotation = Annotation.Root({
+  messages: Annotation<BaseMessage[]>({
+    reducer: messagesStateReducer,
     default: () => [],
-  },
-};
-const callModel = async (state: AgentState) => {
+  }),
+});
+const callModel = async (state: typeof StateAnnotation.State) => {
   const res = await modelWithTools.invoke(state.messages);
-  return { messages: [res as AIMessage] };
+  const msg = res instanceof AIMessage ? res : new AIMessage(String(res?.content ?? ""));
+  return { messages: [msg] };
 };
-function shouldContinue(state: AgentState) {
+function shouldContinue(state: typeof StateAnnotation.State) {
   const last = state.messages[state.messages.length - 1] as AIMessage;
   return last?.tool_calls && last.tool_calls.length > 0 ? "tools" : END;
 }
-const graph = new StateGraph<AgentState>({ channels: graphState })
+const graph = new StateGraph(StateAnnotation)
   .addNode("call_model", callModel)
   .addNode("tools", new ToolNode(tools))
   .addEdge(START, "call_model")
@@ -69,15 +71,19 @@ chatRoute.post("/", async (c) => {
       ),
     ];
     const streamResponse = await graph.stream(
-      { messages: stateMessages as AgentState["messages"] },
+      { messages: stateMessages },
       { configurable: { thread_id: threadId }, streamMode: "messages" }
     );
 
     return new Response(
       new ReadableStream({
         async start(controller) {
-          for await (const [token] of streamResponse as any) {
-            const text = token?.text ?? (typeof token === "string" ? token : "");
+          for await (const item of streamResponse) {
+            const [token] = item as [unknown, unknown];
+            const text =
+              typeof token === "string"
+                ? token
+                : (token as { text?: string })?.text ?? "";
             if (text) controller.enqueue(new TextEncoder().encode(text));
           }
           controller.close();
@@ -93,11 +99,11 @@ chatRoute.post("/", async (c) => {
       m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)
     ),
   ];
-  const resultState = (await graph.invoke(
-    { messages: stateMessages as AgentState["messages"] },
+  const resultState = await graph.invoke(
+    { messages: stateMessages },
     { configurable: { thread_id: threadId } }
-  )) as AgentState;
-  const last = resultState.messages[resultState.messages.length - 1] as AIMessage;
+  );
+  const last = (resultState.messages as BaseMessage[])[(resultState.messages as BaseMessage[]).length - 1] as AIMessage;
   const content = typeof last?.content === "string" ? last.content : "";
 
   return c.json({ content, threadId });
