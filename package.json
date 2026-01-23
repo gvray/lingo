@@ -7,14 +7,16 @@
     "lint": "pnpm -r lint"
   },
   "keywords": [
-    "LangGraph",
-    "LangChain",
-    "LLM",
-    "AI Agent",
-    "OpenAI",
-    "Next.js",
-    "TypeScript",
-    "Chatbot"
+    "langchain",
+    "langchain-js",
+    "langgraph",
+    "langgraph-js",
+    "llm",
+    "ai-agent",
+    "openai",
+    "nextjs",
+    "typescript",
+    "chatbot"
   ],
   "devDependencies": {
     "typescript": "^5"
