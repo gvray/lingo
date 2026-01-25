@@ -1,6 +1,6 @@
 import { Hono } from "hono";
 import { AIMessage, HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { StateGraph, START, END, StateGraphArgs } from "@langchain/langgraph";
+import { StateGraph, StateSchema, MessagesValue, GraphNode, END, START } from "@langchain/langgraph";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import { createLLM } from "../lib/llm";
 import { allTools } from "../tools";
@@ -27,26 +27,29 @@ const model = createLLM();
 const tools = allTools as any;
 const modelWithTools = (model as any).bindTools ? (model as any).bindTools(tools) : model;
 
-type AgentState = { messages: Array<HumanMessage | AIMessage | SystemMessage> };
-const graphState: StateGraphArgs<AgentState>["channels"] = {
-  messages: {
-    value: (x: AgentState["messages"], y: AgentState["messages"]) => x.concat(y),
-    default: () => [],
-  },
-};
-const callModel = async (state: AgentState) => {
+const State = new StateSchema({
+  messages: MessagesValue,
+});
+const callModel: GraphNode<typeof State> = async (state) => {
   const res = await modelWithTools.invoke(state.messages);
   return { messages: [res as AIMessage] };
 };
-function shouldContinue(state: AgentState) {
-  const last = state.messages[state.messages.length - 1] as AIMessage;
-  return last?.tool_calls && last.tool_calls.length > 0 ? "tools" : END;
-}
-const graph = new StateGraph<AgentState>({ channels: graphState })
+const routeTools = (state: typeof State.State) => {
+  const last = state.messages.at(-1) as AIMessage;
+  const calls =
+    (last as any)?.tool_calls ??
+    (last as any)?.additional_kwargs?.tool_calls;
+
+  return Array.isArray(calls) && calls.length > 0
+    ? "UseTools"
+    : "Done";
+};
+
+const chain = new StateGraph(State)
   .addNode("call_model", callModel)
   .addNode("tools", new ToolNode(tools))
   .addEdge(START, "call_model")
-  .addConditionalEdges("call_model", shouldContinue)
+  .addConditionalEdges("call_model", routeTools, { UseTools: "tools", Done: END })
   .addEdge("tools", "call_model")
   .compile({ checkpointer });
 
@@ -68,8 +71,8 @@ chatRoute.post("/", async (c) => {
         m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)
       ),
     ];
-    const streamResponse = await graph.stream(
-      { messages: stateMessages as AgentState["messages"] },
+    const streamResponse = await chain.stream(
+      { messages: stateMessages },
       { configurable: { thread_id: threadId }, streamMode: "messages" }
     );
 
@@ -93,11 +96,13 @@ chatRoute.post("/", async (c) => {
       m.role === "user" ? new HumanMessage(m.content) : new AIMessage(m.content)
     ),
   ];
-  const resultState = (await graph.invoke(
-    { messages: stateMessages as AgentState["messages"] },
+  const resultState = await chain.invoke(
+    { messages: stateMessages },
     { configurable: { thread_id: threadId } }
-  )) as AgentState;
-  const last = resultState.messages[resultState.messages.length - 1] as AIMessage;
+  );
+  const last = (resultState.messages as Array<HumanMessage | AIMessage | SystemMessage>)[
+    (resultState.messages as Array<HumanMessage | AIMessage | SystemMessage>).length - 1
+  ] as AIMessage;
   const content = typeof last?.content === "string" ? last.content : "";
 
   return c.json({ content, threadId });

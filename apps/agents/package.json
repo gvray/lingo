@@ -9,8 +9,8 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.1",
-    "@langchain/core": "^1.1.12",
-    "@langchain/langgraph": "^1.0.4",
+    "@langchain/core": "^1.1.16",
+    "@langchain/langgraph": "^1.1.1",
     "@langchain/openai": "^1.2.1",
     "dotenv": "^16.5.0",
     "hono": "^4.7.10",
