@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "studio": "langgraphjs dev -c ./langgraph.json"
   },
   "dependencies": {
     "@hono/node-server": "^1.14.1",
@@ -17,6 +18,7 @@
     "zod": "^3.25.67"
   },
   "devDependencies": {
+    "@langchain/langgraph-cli": "^1.1.11",
     "@types/node": "^22",
     "tsx": "^4.20.3",
     "typescript": "^5"

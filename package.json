@@ -18,6 +18,9 @@
     "typescript",
     "chatbot"
   ],
+  "engines": {
+    "node": "20.x || 22.x || 24.x"
+  },
   "devDependencies": {
     "typescript": "^5"
   }
